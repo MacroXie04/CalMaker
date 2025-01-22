@@ -35,12 +35,12 @@ This project is designed to extract course information, instructor details, and 
 
 ## Usage
 
-1. Place the HTML file containing the course schedule in the root directory of the project (e.g., `index.html`).
+1. Place the HTML file containing the course schedule on the campus website in the root directory of the project (e.g., `index.html`).
 
 2. Run the script:
 
     ```bash
-    python course_schedule_parser.py
+    python index.py
     ```
 
 3. The script will process each course and ask if you would like to create a `.ics` calendar file for the course. 
