@@ -1,7 +1,5 @@
 # ClassScheduleCalendar
 
-ONLY for UC Merced, Berkeley and Riverside Systems.
-
 This project is designed to extract course information, instructor details, and meeting times from a course schedule HTML page. The parsed information is then used to optionally generate `.ics` calendar files for each course.
 
 
