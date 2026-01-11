@@ -10,6 +10,8 @@ import MonthGrid from './MonthGrid.vue';
 import WeekGrid from './WeekGrid.vue';
 import DayGrid from './DayGrid.vue';
 
+import JSZip from 'jszip';
+
 const { events, load, deleteEvent } = useEvents();
 
 // View State
@@ -85,8 +87,17 @@ const eventsByDate = computed(() => {
 });
 
 const currentSelectedEvents = computed(() => {
-  if (!selectedDate.value) return [];
-  return eventsByDate.value[selectedDate.value] || [];
+  // Requirement change: Show ALL events regardless of date selection in the list.
+  // We can just return all events, sorted.
+  // Let's reuse expandedEvents but sorted.
+  return expandedEvents.value.sort((a,b) => {
+      // Sort by date then time
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      if (a.allDay && !b.allDay) return -1;
+      if (!a.allDay && b.allDay) return 1;
+      if (a.startTime && b.startTime) return a.startTime.localeCompare(b.startTime);
+      return 0;
+  });
 });
 
 const weekStartDate = computed(() => formatDate(getWeekStart(currentDate.value)));
@@ -125,6 +136,62 @@ function selectDate(date: string) {
   selectedDate.value = date;
 }
 
+// Swipe Support
+const touchStartX = ref(0);
+const touchStartY = ref(0);
+const isSwiping = ref(false);
+
+function onTouchStart(e: TouchEvent) {
+  const touch = e.touches[0];
+  if (touch) {
+    touchStartX.value = touch.clientX;
+    touchStartY.value = touch.clientY;
+    isSwiping.value = true;
+  }
+}
+
+function onTouchEnd(e: TouchEvent) {
+  if (!isSwiping.value) return;
+  const touch = e.changedTouches[0];
+  if (touch) {
+    const touchEndX = touch.clientX;
+    const touchEndY = touch.clientY;
+    
+    handleSwipe(touchStartX.value, touchEndX, touchStartY.value, touchEndY);
+  }
+  isSwiping.value = false;
+}
+
+function onMouseDown(e: MouseEvent) {
+  touchStartX.value = e.clientX;
+  touchStartY.value = e.clientY;
+  isSwiping.value = true;
+}
+
+function onMouseUp(e: MouseEvent) {
+  if (!isSwiping.value) return;
+  const touchEndX = e.clientX;
+  const touchEndY = e.clientY;
+  
+  handleSwipe(touchStartX.value, touchEndX, touchStartY.value, touchEndY);
+  isSwiping.value = false;
+}
+
+function handleSwipe(startX: number, endX: number, startY: number, endY: number) {
+  const diffX = startX - endX;
+  const diffY = startY - endY;
+  
+  // Threshold 50px
+  if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY)) {
+    if (diffX > 0) {
+      next();
+    } else {
+      prev();
+    }
+  }
+}
+
+
 // Export Logic
 const showExportDialog = ref(false);
 
@@ -136,12 +203,15 @@ function closeExportDialog() {
   showExportDialog.value = false;
 }
 
-function doExport(mode: 'all' | 'selected') {
+function doExport(mode: 'all' | 'selected' | 'individual') {
   let listToExport: EventItem[] = [];
   
   if (mode === 'all') {
     listToExport = events.value;
   } else {
+    // For both 'selected' and 'individual', we filter by selection first
+    // If no selection, we might want to export current view's events or all?
+    // Following existing logic: filter by selection if mode is not 'all'.
     const idsToExport = new Set(selectedEventIds.value);
     listToExport = events.value.filter(e => idsToExport.has(e.id));
     
@@ -152,14 +222,46 @@ function doExport(mode: 'all' | 'selected') {
     }
   }
 
-  const icsContent = generateICS(listToExport);
-  const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = mode === 'all' ? 'CalMaker_All.ics' : 'CalMaker_Selected.ics';
-  a.click();
-  URL.revokeObjectURL(url);
+  // Common file name base
+  const safeTitle = headerTitle.value.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+
+  if (mode === 'individual') {
+    // Zip export
+    const zip = new JSZip();
+    listToExport.forEach(event => {
+      const ics = generateICS([event]);
+      // Sanitize event title for filename
+      const safeEventTitle = event.title.replace(/[^a-z0-9]/gi, '_').substring(0, 50);
+      const fileName = `${event.date}_${safeEventTitle}.ics`;
+      zip.file(fileName, ics);
+    });
+    
+    zip.generateAsync({ type: 'blob' }).then(content => {
+      const url = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `CalMaker_Export_${safeTitle}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+    
+  } else {
+    // Single ICS file export
+    const icsContent = generateICS(listToExport);
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    
+    const filename = mode === 'all' 
+      ? `CalMaker_All_${safeTitle}.ics` 
+      : `CalMaker_Selected_${safeTitle}.ics`;
+      
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+  
   closeExportDialog();
 }
 
@@ -174,13 +276,19 @@ function handleEditEvent(e: ExpandedEvent) {
 }
 
 function handleDeleteEvent(e: ExpandedEvent) {
-   if (confirm(`Delete "${e.title}"? This will delete all occurrences.`)) {
-     deleteEvent(e.originalEventId);
-   }
+   deleteEvent(e.originalEventId);
 }
 
 function handleSelectionChange(ids: string[]) {
   selectedEventIds.value = ids;
+}
+
+function handleAddEventClick() {
+  if (selectedDate.value) {
+    emit('addEvent', selectedDate.value);
+  } else {
+    emit('addEvent', getToday());
+  }
 }
 
 onMounted(() => {
@@ -201,19 +309,22 @@ onMounted(() => {
           <component :is="viewMode === 'day' ? 'md-filled-tonal-button' : 'md-text-button'" @click="viewMode = 'day'">Day</component>
         </div>
 
-        <md-icon-button @click="prev"><md-icon>chevron_left</md-icon></md-icon-button>
-        <md-filled-tonal-button @click="goToday">Today</md-filled-tonal-button>
-        <md-icon-button @click="next"><md-icon>chevron_right</md-icon></md-icon-button>
+        <div class="nav-controls">
+          <md-icon-button @click="prev"><md-icon>chevron_left</md-icon></md-icon-button>
+          <md-filled-tonal-button @click="goToday">Today</md-filled-tonal-button>
+          <md-icon-button @click="next"><md-icon>chevron_right</md-icon></md-icon-button>
+        </div>
         
         <div class="spacer"></div>
-        <md-outlined-button @click="openExportDialog">
-           <md-icon slot="icon">download</md-icon>
-           Export
-        </md-outlined-button>
       </div>
     </div>
     
-    <div class="view-container">
+    <div class="view-container"
+       @touchstart="onTouchStart"
+       @touchend="onTouchEnd"
+       @mousedown="onMouseDown"
+       @mouseup="onMouseUp"
+    >
        <MonthGrid 
          v-if="viewMode === 'month'"
          :grid="monthGrid"
@@ -244,23 +355,33 @@ onMounted(() => {
          @edit="handleEditEvent"
          @delete="handleDeleteEvent"
          @selection-change="handleSelectionChange"
+         @export="openExportDialog"
+         @add="handleAddEventClick"
        />
     </div>
     
-    <md-dialog :open="showExportDialog" @closed="closeExportDialog">
+    <md-dialog :open="showExportDialog" @closed="closeExportDialog" class="export-dialog">
       <div slot="headline">Export Events</div>
-      <div slot="content">
-        Choose which events to export to ICS file.
+      <div slot="content" class="export-content">
+        Choose how to export events.
       </div>
-      <div slot="actions">
+      <div slot="actions" class="export-actions">
         <md-text-button @click="closeExportDialog">Cancel</md-text-button>
-        <md-outlined-button 
-            @click="doExport('selected')"
-            :disabled="selectedEventIds.length === 0"
-        >
-          Export Selected ({{ selectedEventIds.length }})
-        </md-outlined-button>
-        <md-filled-button @click="doExport('all')">Export All</md-filled-button>
+        <div class="export-group">
+          <md-outlined-button 
+              @click="doExport('selected')"
+              :disabled="selectedEventIds.length === 0"
+          >
+            Selected (Merged)
+          </md-outlined-button>
+          <md-outlined-button 
+              @click="doExport('individual')"
+              :disabled="selectedEventIds.length === 0"
+          >
+            Selected (Zip)
+          </md-outlined-button>
+        </div>
+        <md-filled-button @click="doExport('all')">All</md-filled-button>
       </div>
     </md-dialog>
 
@@ -296,9 +417,15 @@ onMounted(() => {
   gap: 8px;
   align-items: center;
   flex: 1;
+  flex-wrap: wrap; /* Allow controls to wrap on small screens */
 }
 .view-toggle {
   display: flex;
+  gap: 4px;
+}
+.nav-controls {
+  display: flex;
+  align-items: center;
   gap: 4px;
 }
 .spacer {
@@ -310,9 +437,10 @@ onMounted(() => {
   flex-direction: column;
   overflow: hidden;
   min-height: 0;
+  user-select: none;
 }
 .events-panel {
-  flex: 0 0 30%; /* Fixed height ratio or use pixels */
+  flex: 0 0 30%;
   min-height: 200px;
   max-height: 400px;
   overflow: hidden;
@@ -323,11 +451,31 @@ onMounted(() => {
     .header {
         flex-direction: column;
         align-items: stretch;
+        gap: 12px;
+        height: auto; /* Fix fixed height causing layout issues */
+    }
+    .title-section {
+      text-align: center;
+      min-width: auto;
+      order: -1; /* Ensure title is at top */
+    }
+    .controls {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
     }
     .view-toggle {
       width: 100%;
       justify-content: center;
     }
+    .nav-controls {
+      justify-content: space-between;
+      width: 100%;
+    }
+    .spacer {
+      display: none;
+    }
+    
     .calendar-view {
         overflow-y: auto;
         display: block;
@@ -339,5 +487,20 @@ onMounted(() => {
     .events-panel {
         height: auto;
     }
+    
+    .export-dialog md-outlined-button,
+    .export-dialog md-filled-button {
+      flex: 1;
+    }
+}
+
+.export-actions {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.export-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 </style>

@@ -12,6 +12,8 @@ const emit = defineEmits<{
   (e: 'edit', event: ExpandedEvent): void;
   (e: 'delete', event: ExpandedEvent): void;
   (e: 'selection-change', selectedIds: string[]): void;
+  (e: 'export'): void;
+  (e: 'add'): void;
 }>();
 
 const selectedIds = ref<Set<string>>(new Set());
@@ -44,8 +46,16 @@ function onDelete(evt: ExpandedEvent) {
   <div class="event-list-container">
     <div class="list-header">
       <div class="date-title">
-        {{ date ? new Date(date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Select a date' }}
+        All Events
       </div>
+      <md-outlined-button @click="emit('add')" class="add-btn">
+         <md-icon slot="icon">add</md-icon>
+         <span class="btn-text">Add</span>
+      </md-outlined-button>
+      <md-outlined-button @click="emit('export')" class="export-btn">
+         <md-icon slot="icon">download</md-icon>
+         <span class="btn-text">Export</span>
+      </md-outlined-button>
     </div>
 
     <div class="list-content">
@@ -92,13 +102,18 @@ function onDelete(evt: ExpandedEvent) {
   padding: 16px;
   border-bottom: 1px solid #eee;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 8px; /* Use gap for spacing */
 }
 .date-title {
   font-size: 1.1rem;
   font-weight: 500;
   color: var(--md-sys-color-on-surface, #1d1b20);
+  margin-right: auto; /* Push buttons to the right */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1; /* Allow taking available space */
 }
 .list-content {
   flex: 1;
@@ -151,5 +166,17 @@ function onDelete(evt: ExpandedEvent) {
   text-align: center;
   color: #888;
   font-style: italic;
+}
+@media (max-width: 600px) {
+  .list-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .btn-text {
+    display: none;
+  }
+  .export-btn, .add-btn {
+    min-width: 48px;
+  }
 }
 </style>

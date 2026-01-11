@@ -3,6 +3,7 @@ import { ref, watch } from 'vue';
 import type { EventItem, RecurrenceRule } from '../types';
 import { useEvents } from '../composables/useEvents';
 import { getToday } from '../utils/date';
+import { parseUCMHtml } from '../utils/ucmParser';
 
 const props = defineProps<{
   initialDate?: string;
@@ -23,6 +24,31 @@ const endTime = ref('');
 const timezone = ref(Intl.DateTimeFormat().resolvedOptions().timeZone);
 const location = ref('');
 const description = ref('');
+
+// Import State
+const showImport = ref(false);
+const importHtml = ref('');
+
+function toggleImport() {
+  showImport.value = !showImport.value;
+}
+
+function handleImport() {
+  if (!importHtml.value) return;
+  const newEvents = parseUCMHtml(importHtml.value);
+  if (newEvents.length > 0) {
+    newEvents.forEach(evt => addEvent(evt));
+    alert(`Imported ${newEvents.length} events!`);
+    emit('saved');
+    emit('close');
+    // Reset
+    importHtml.value = '';
+    showImport.value = false;
+  } else {
+    alert('No events found in HTML.');
+  }
+}
+
 
 // Recurrence State
 const freq = ref<RecurrenceRule['freq']>('NONE');
@@ -146,11 +172,35 @@ function toggleDay(dIndex: number) {
 <template>
   <div class="bottom-panel" :class="{ open: isOpen }">
      <div class="panel-header">
-       <h3>{{ editEvent ? 'Edit Event' : 'New Event' }}</h3>
-       <md-icon-button @click="$emit('close')"><md-icon>close</md-icon></md-icon-button>
+       <h3>{{ editEvent ? 'Edit Event' : (showImport ? 'Import Schedule' : 'New Event') }}</h3>
+       <div class="header-actions">
+         <md-text-button v-if="!editEvent" @click="toggleImport">
+            {{ showImport ? 'Back' : 'Import From UC Merced Registration' }}
+         </md-text-button>
+         <md-icon-button @click="$emit('close')"><md-icon>close</md-icon></md-icon-button>
+       </div>
      </div>
      
-     <div class="panel-content">
+     <div v-if="showImport" class="panel-content">
+       <div class="import-instruction">
+         Paste the HTML source from UC Merced Course Registration "Schedule Details" page.
+       </div>
+       <md-outlined-text-field 
+         type="textarea" 
+         label="Paste HTML Source" 
+         :value="importHtml" 
+         @input="importHtml = $event.target.value" 
+         rows="10"
+         style="width: 100%"
+       ></md-outlined-text-field>
+       
+       <div class="actions">
+         <md-filled-button @click="handleImport">Parse & Import</md-filled-button>
+         <md-text-button @click="$emit('close')">Cancel</md-text-button>
+       </div>
+     </div>
+
+     <div v-else class="panel-content">
        <md-outlined-text-field 
          label="Title" 
          :value="title" 
@@ -285,6 +335,16 @@ function toggleDay(dIndex: number) {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
+}
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.import-instruction {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 8px;
 }
 .panel-content {
   display: flex;

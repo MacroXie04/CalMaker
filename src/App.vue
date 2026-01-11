@@ -31,12 +31,6 @@ function handleSaved() {
        @addEvent="openAdd"
        @editEvent="openEdit"
     />
-    
-    <div class="fab-container">
-        <md-fab variant="primary" @click="() => openAdd()">
-            <md-icon slot="icon">add</md-icon>
-        </md-fab>
-    </div>
 
     <EventForm 
       :isOpen="isFormOpen"
@@ -56,11 +50,5 @@ function handleSaved() {
     overflow: hidden;
     position: relative;
     background-color: var(--md-sys-color-background, #fff);
-}
-.fab-container {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    z-index: 90;
 }
 </style>
