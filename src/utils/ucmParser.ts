@@ -81,7 +81,8 @@ export function parseUCMHtml(html: string): EventItem[] {
             let h = timeParts[0];
             const m = timeParts[1];
             
-            if (h === undefined) return undefined;
+            if (h === undefined || isNaN(h)) return undefined;
+            if (m === undefined || isNaN(m)) return undefined;
             
             if (period === 'PM' && h !== 12) h += 12;
             if (period === 'AM' && h === 12) h = 0;
@@ -97,6 +98,21 @@ export function parseUCMHtml(html: string): EventItem[] {
             currentMeeting.days.forEach((isChecked: boolean, index: number) => {
                 if (isChecked) byWeekday.push(index);
             });
+        }
+        
+        // Skip events with no valid time AND no days (like online/TBA courses)
+        if (!startTime && byWeekday.length === 0) {
+            return;
+        }
+        
+        // Filter out "None" values from location
+        let location = '';
+        const building = currentMeeting.building && currentMeeting.building !== 'None' ? currentMeeting.building : '';
+        const room = currentMeeting.room && currentMeeting.room !== 'None' ? currentMeeting.room : '';
+        if (building || room) {
+            location = `${building} ${room}`.trim();
+        } else if (currentMeeting.locationBase && currentMeeting.locationBase !== 'None') {
+            location = currentMeeting.locationBase;
         }
         
         // Description
@@ -127,7 +143,7 @@ export function parseUCMHtml(html: string): EventItem[] {
             endTime,
             allDay: false,
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            location: currentMeeting.location,
+            location: location || undefined,
             description: desc,
             recurrence,
             createdAt: Date.now()
@@ -138,13 +154,6 @@ export function parseUCMHtml(html: string): EventItem[] {
     
     Array.from(meetingDiv.childNodes).forEach(node => {
         if (node.nodeName === 'BR') {
-            // Construct full location before saving
-            if (currentMeeting.building || currentMeeting.room) {
-                 currentMeeting.location = `${currentMeeting.building || ''} ${currentMeeting.room || ''}`.trim();
-            } else {
-                 currentMeeting.location = currentMeeting.locationBase;
-            }
-            
             saveCurrent();
             currentMeeting = {};
             pendingSave = false;
@@ -182,12 +191,6 @@ export function parseUCMHtml(html: string): EventItem[] {
     
     // Final save if loop finished without BR
     if (pendingSave) {
-        // Construct full location
-        if (currentMeeting.building || currentMeeting.room) {
-             currentMeeting.location = `${currentMeeting.building || ''} ${currentMeeting.room || ''}`.trim();
-        } else {
-             currentMeeting.location = currentMeeting.locationBase;
-        }
         saveCurrent();
     }
   });

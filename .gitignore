@@ -38,9 +38,7 @@ out/
 *.njsproj
 *.sln
 *.sw?
-.history
-
-# OS Files
+.history# OS Files
 .DS_Store
 .DS_Store?
 ._*

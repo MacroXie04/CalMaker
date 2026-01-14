@@ -87,16 +87,46 @@ const eventsByDate = computed(() => {
 });
 
 const currentSelectedEvents = computed(() => {
-  // Requirement change: Show ALL events regardless of date selection in the list.
-  // We can just return all events, sorted.
-  // Let's reuse expandedEvents but sorted.
-  return expandedEvents.value.sort((a,b) => {
-      // Sort by date then time
-      if (a.date !== b.date) return a.date.localeCompare(b.date);
+  // Filter by selected date if one is chosen
+  if (!selectedDate.value) return [];
+  
+  const eventsForDate = eventsByDate.value[selectedDate.value] || [];
+  return eventsForDate.slice().sort((a,b) => {
+      // Sort by time
       if (a.allDay && !b.allDay) return -1;
       if (!a.allDay && b.allDay) return 1;
       if (a.startTime && b.startTime) return a.startTime.localeCompare(b.startTime);
       return 0;
+  });
+});
+
+// All events sorted by date and time for "all events" view
+// This expands ALL events regardless of current view date range
+const allExpandedEvents = computed(() => {
+  if (events.value.length === 0) return [];
+  
+  // Find the earliest start date and latest end date across all events
+  let minDate = '9999-12-31';
+  let maxDate = '0000-01-01';
+  
+  for (const evt of events.value) {
+    if (evt.date < minDate) minDate = evt.date;
+    // For recurring events, use the until date or a reasonable future date
+    const endDate = evt.recurrence.until || evt.date;
+    if (endDate > maxDate) maxDate = endDate;
+    if (evt.date > maxDate) maxDate = evt.date;
+  }
+  
+  // Expand all events within this full range
+  const allExpanded = expandRecurringEvents(events.value, minDate, maxDate);
+  
+  return allExpanded.sort((a, b) => {
+    // Sort by date then time
+    if (a.instanceDate !== b.instanceDate) return a.instanceDate.localeCompare(b.instanceDate);
+    if (a.allDay && !b.allDay) return -1;
+    if (!a.allDay && b.allDay) return 1;
+    if (a.startTime && b.startTime) return a.startTime.localeCompare(b.startTime);
+    return 0;
   });
 });
 
@@ -194,9 +224,86 @@ function handleSwipe(startX: number, endX: number, startY: number, endY: number)
 
 // Export Logic
 const showExportDialog = ref(false);
+const exportSelectedCourses = ref<Set<string>>(new Set());
+
+// Group all events by course name for export selection
+const courseGroups = computed(() => {
+  const groups: Record<string, EventItem[]> = {};
+  
+  for (const evt of events.value) {
+    // Extract base title: "Course (Type)" -> "Course"
+    const match = evt.title.match(/^(.*?)\s*\([^)]+\)$/);
+    const baseTitle = match ? match[1].trim() : evt.title;
+    
+    if (!groups[baseTitle]) {
+      groups[baseTitle] = [];
+    }
+    groups[baseTitle].push(evt);
+  }
+  
+  return Object.entries(groups)
+    .map(([name, items]) => ({ name, count: items.length, eventIds: items.map(e => e.id) }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+});
+
+const panelHeight = ref(300);
+const isResizing = ref(false);
+
+function startResize(e: MouseEvent | TouchEvent) {
+  isResizing.value = true;
+  document.addEventListener('mousemove', handleResize);
+  document.addEventListener('mouseup', stopResize);
+  document.addEventListener('touchmove', handleResize);
+  document.addEventListener('touchend', stopResize);
+}
+
+function handleResize(e: MouseEvent | TouchEvent) {
+  if (!isResizing.value) return;
+  
+  let clientY;
+  if (window.TouchEvent && e instanceof TouchEvent) {
+    clientY = e.touches[0].clientY;
+  } else {
+    clientY = (e as MouseEvent).clientY;
+  }
+  
+  const newHeight = window.innerHeight - clientY;
+  // Min 100px, Max Window - 100px
+  if (newHeight > 100 && newHeight < window.innerHeight - 100) {
+    panelHeight.value = newHeight;
+  }
+}
+
+function stopResize() {
+  isResizing.value = false;
+  document.removeEventListener('mousemove', handleResize);
+  document.removeEventListener('mouseup', stopResize);
+  document.removeEventListener('touchmove', handleResize);
+  document.removeEventListener('touchend', stopResize);
+}
 
 function openExportDialog() {
+  // Select all courses by default
+  exportSelectedCourses.value = new Set(courseGroups.value.map(g => g.name));
   showExportDialog.value = true;
+}
+
+function toggleCourseSelection(courseName: string, checked: boolean) {
+  if (checked) {
+    exportSelectedCourses.value.add(courseName);
+  } else {
+    exportSelectedCourses.value.delete(courseName);
+  }
+  // Trigger reactivity
+  exportSelectedCourses.value = new Set(exportSelectedCourses.value);
+}
+
+function selectAllCourses() {
+  exportSelectedCourses.value = new Set(courseGroups.value.map(g => g.name));
+}
+
+function deselectAllCourses() {
+  exportSelectedCourses.value = new Set();
 }
 
 function closeExportDialog() {
@@ -207,16 +314,25 @@ function doExport(mode: 'all' | 'selected' | 'individual') {
   let listToExport: EventItem[] = [];
   
   if (mode === 'all') {
-    listToExport = events.value;
+    // Filter by selected courses
+    const selectedEventIds = new Set<string>();
+    for (const group of courseGroups.value) {
+      if (exportSelectedCourses.value.has(group.name)) {
+        group.eventIds.forEach(id => selectedEventIds.add(id));
+      }
+    }
+    listToExport = events.value.filter(e => selectedEventIds.has(e.id));
+    
+    if (listToExport.length === 0) {
+      closeExportDialog();
+      return;
+    }
   } else {
-    // For both 'selected' and 'individual', we filter by selection first
-    // If no selection, we might want to export current view's events or all?
-    // Following existing logic: filter by selection if mode is not 'all'.
+    // For both 'selected' and 'individual', we filter by list selection
     const idsToExport = new Set(selectedEventIds.value);
     listToExport = events.value.filter(e => idsToExport.has(e.id));
     
     if (listToExport.length === 0) {
-       // Ideally show toast
        closeExportDialog();
        return;
     }
@@ -348,10 +464,15 @@ onMounted(() => {
        />
     </div>
     
-    <div class="events-panel">
+    <div class="events-panel" :style="{ height: panelHeight + 'px', flex: 'none' }">
+       <div class="resize-handle" @mousedown.prevent="startResize" @touchstart.prevent="startResize">
+          <div class="handle-bar"></div>
+       </div>
        <EventList 
+         style="flex: 1; min-height: 0;"
          :date="selectedDate"
          :events="currentSelectedEvents"
+         :allEvents="allExpandedEvents"
          @edit="handleEditEvent"
          @delete="handleDeleteEvent"
          @selection-change="handleSelectionChange"
@@ -363,25 +484,38 @@ onMounted(() => {
     <md-dialog :open="showExportDialog" @closed="closeExportDialog" class="export-dialog">
       <div slot="headline">Export Events</div>
       <div slot="content" class="export-content">
-        Choose how to export events.
+        <div class="course-selection-header">
+          <span class="export-desc">Select courses to export:</span>
+          <div class="select-actions">
+            <md-text-button @click="selectAllCourses">Select All</md-text-button>
+            <md-text-button @click="deselectAllCourses">Deselect All</md-text-button>
+          </div>
+        </div>
+        <div class="course-list">
+          <div v-for="group in courseGroups" :key="group.name" class="course-item">
+            <md-checkbox 
+              touch-target="wrapper"
+              :checked="exportSelectedCourses.has(group.name)"
+              @change="toggleCourseSelection(group.name, $event.target.checked)"
+            ></md-checkbox>
+            <div class="course-info">
+              <span class="course-name">{{ group.name }}</span>
+              <span class="course-count">{{ group.count }} events</span>
+            </div>
+          </div>
+          <div v-if="courseGroups.length === 0" class="empty-courses">
+            No courses to export
+          </div>
+        </div>
       </div>
       <div slot="actions" class="export-actions">
         <md-text-button @click="closeExportDialog">Cancel</md-text-button>
-        <div class="export-group">
-          <md-outlined-button 
-              @click="doExport('selected')"
-              :disabled="selectedEventIds.length === 0"
-          >
-            Selected (Merged)
-          </md-outlined-button>
-          <md-outlined-button 
-              @click="doExport('individual')"
-              :disabled="selectedEventIds.length === 0"
-          >
-            Selected (Zip)
-          </md-outlined-button>
-        </div>
-        <md-filled-button @click="doExport('all')">All</md-filled-button>
+        <md-filled-button 
+          @click="doExport('all')"
+          :disabled="exportSelectedCourses.size === 0"
+        >
+          Export ({{ exportSelectedCourses.size }} courses)
+        </md-filled-button>
       </div>
     </md-dialog>
 
@@ -435,16 +569,36 @@ onMounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto; /* Allow vertical scrolling */
+  overflow-x: hidden;
   min-height: 0;
   user-select: none;
+  touch-action: pan-y;
+  overscroll-behavior-x: none;
 }
 .events-panel {
-  flex: 0 0 30%;
-  min-height: 200px;
-  max-height: 400px;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   border-top: 1px solid #ddd;
+  background-color: var(--md-sys-color-surface);
+}
+
+.resize-handle {
+  height: 20px;
+  width: 100%;
+  cursor: row-resize;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.handle-bar {
+  width: 32px;
+  height: 4px;
+  background-color: #e0e0e0;
+  border-radius: 2px;
 }
 
 @media (max-width: 600px) {
@@ -502,5 +656,67 @@ onMounted(() => {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+.export-content {
+  padding: 0 24px;
+}
+.export-desc {
+  color: #666;
+  font-weight: 500;
+}
+.course-selection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.select-actions {
+  display: flex;
+  gap: 4px;
+}
+.course-list {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fafafa;
+}
+.course-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  gap: 12px;
+  border-bottom: 1px solid #eee;
+}
+.course-item:last-child {
+  border-bottom: none;
+}
+.course-item:hover {
+  background-color: #f0f0f0;
+}
+.course-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.course-name {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.course-count {
+  font-size: 0.85rem;
+  color: #666;
+}
+.empty-courses {
+  padding: 32px;
+  text-align: center;
+  color: #888;
+  font-style: italic;
 }
 </style>

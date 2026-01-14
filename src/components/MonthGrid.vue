@@ -64,25 +64,25 @@ const emit = defineEmits<{
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 300px;
-  overflow: hidden;
+  min-height: 600px; /* Ensure enough scrollable area */
 }
 .grid-header {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  text-align: center;
-  font-weight: 500;
-  padding-bottom: 8px;
   border-bottom: 1px solid #e0e0e0;
 }
 .weekday-label {
-    padding: 8px 0;
-    color: #666;
+  text-align: center;
+  padding: 8px 4px;
+  font-weight: 500;
+  font-size: 0.85rem;
+  color: #666;
 }
 .grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  grid-template-rows: repeat(6, 1fr);
+  /* Ensure rows have a minimum height so they don't squash too much, enabling scrolling */
+  grid-template-rows: repeat(6, minmax(100px, 1fr));
   flex: 1;
   border-left: 1px solid #e0e0e0;
   border-top: 1px solid #e0e0e0;
