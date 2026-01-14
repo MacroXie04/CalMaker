@@ -9,7 +9,7 @@ import { WEEKDAYS } from '../utils/date';
 // We need to import ExpandedEvent type.
 // But CalendarDay is defined in date.ts? Yes.
 
-const props = defineProps<{
+defineProps<{
   grid: { date: string; isCurrentMonth: boolean; dayNum: number }[];
   today: string;
   selectedDate: string | null;

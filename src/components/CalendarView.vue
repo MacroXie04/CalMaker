@@ -233,7 +233,7 @@ const courseGroups = computed(() => {
   for (const evt of events.value) {
     // Extract base title: "Course (Type)" -> "Course"
     const match = evt.title.match(/^(.*?)\s*\([^)]+\)$/);
-    const baseTitle = match ? match[1].trim() : evt.title;
+    const baseTitle = match && match[1] ? match[1].trim() : evt.title;
     
     if (!groups[baseTitle]) {
       groups[baseTitle] = [];
@@ -249,7 +249,7 @@ const courseGroups = computed(() => {
 const panelHeight = ref(300);
 const isResizing = ref(false);
 
-function startResize(e: MouseEvent | TouchEvent) {
+function startResize(_e: MouseEvent | TouchEvent) {
   isResizing.value = true;
   document.addEventListener('mousemove', handleResize);
   document.addEventListener('mouseup', stopResize);
@@ -262,7 +262,9 @@ function handleResize(e: MouseEvent | TouchEvent) {
   
   let clientY;
   if (window.TouchEvent && e instanceof TouchEvent) {
-    clientY = e.touches[0].clientY;
+    const touch = e.touches[0];
+    if (!touch) return;
+    clientY = touch.clientY;
   } else {
     clientY = (e as MouseEvent).clientY;
   }

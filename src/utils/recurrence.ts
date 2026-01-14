@@ -25,7 +25,7 @@ export function expandRecurringEvents(
     const untilDate = until ? parseDate(until) : null;
     
     let currentCount = 0;
-    let cursor = new Date(startDate);
+    const cursor = new Date(startDate);
     
     let safety = 0;
     const MAX_SAFETY = 2000;

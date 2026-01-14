@@ -27,7 +27,7 @@ export function useEvents() {
         try {
           const oldEvents = JSON.parse(v1);
           // Migrate
-          events.value = oldEvents.map((e: any) => ({
+          events.value = oldEvents.map((e: Record<string, unknown>) => ({
              // Ensure all required fields for v2
              id: e.id || crypto.randomUUID(),
              title: e.title,

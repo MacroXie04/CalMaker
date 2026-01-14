@@ -41,7 +41,7 @@ const groupedEvents = computed(() => {
   for (const evt of uniqueEvents.value) {
     // Extract base title: "Course (Type)" -> "Course"
     const match = evt.title.match(/^(.*?)\s*\([^)]+\)$/);
-    const baseTitle = match ? match[1].trim() : evt.title;
+    const baseTitle = match && match[1] ? match[1].trim() : evt.title;
     
     if (!groups[baseTitle]) {
       groups[baseTitle] = [];

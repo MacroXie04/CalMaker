@@ -39,14 +39,28 @@ export function parseUCMHtml(html: string): EventItem[] {
     // Since we are in DOM, we can iterate children.
     // A "meeting block" starts with span.meetingTimes
     
-    let currentMeeting: any = {};
+    interface MeetingInfo {
+      dateRange?: string;
+      timeStr?: string;
+      days?: boolean[];
+      type?: string;
+      locationBase?: string;
+      building?: string;
+      room?: string;
+    }
+    
+    let currentMeeting: MeetingInfo = {};
     let pendingSave = false;
     
     const saveCurrent = () => {
         if (!currentMeeting.dateRange) return;
         
         // Process currentMeeting into EventItem
-        const [startDateStr, endDateStr] = currentMeeting.dateRange.split('--').map((s: string) => s.trim());
+        const dateRangeParts = currentMeeting.dateRange.split('--').map((s: string) => s.trim());
+        const startDateStr = dateRangeParts[0];
+        const endDateStr = dateRangeParts[1];
+        if (!startDateStr || !endDateStr) return;
+        
         // Date format MM/DD/YYYY
         const parseUSDate = (str: string) => {
             const [m, d, y] = str.split('/').map(Number);
@@ -89,8 +103,8 @@ export function parseUCMHtml(html: string): EventItem[] {
             return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
         };
         
-        const startTime = convertTo24(startTimeStr);
-        const endTime = convertTo24(endTimeStr);
+        const startTime = startTimeStr ? convertTo24(startTimeStr) : undefined;
+        const endTime = endTimeStr ? convertTo24(endTimeStr) : undefined;
         
         // Days
         const byWeekday: number[] = [];
