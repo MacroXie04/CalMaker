@@ -9,7 +9,7 @@ import {
   generateMonthGrid,
   formatTime,
   WEEKDAYS,
-} from './date';
+} from '../date';
 
 describe('date utilities', () => {
   describe('formatDate', () => {

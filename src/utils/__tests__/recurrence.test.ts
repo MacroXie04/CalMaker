@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { expandRecurringEvents } from './recurrence';
-import type { EventItem } from '../types';
+import { expandRecurringEvents } from '../recurrence';
+import type { EventItem } from '../../types';
 
 describe('recurrence utilities', () => {
   const createEvent = (overrides: Partial<EventItem> = {}): EventItem => ({

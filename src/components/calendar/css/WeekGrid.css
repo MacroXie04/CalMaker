@@ -1,0 +1,178 @@
+.week-grid-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: white;
+}
+
+.week-header {
+  display: flex;
+  border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.time-col-header {
+  width: 60px;
+  flex-shrink: 0;
+  border-right: 1px solid #e0e0e0;
+}
+
+.day-header {
+  flex: 1;
+  text-align: center;
+  padding: 8px 0;
+  border-right: 1px solid #e0e0e0;
+  cursor: pointer;
+}
+
+.day-header:hover {
+  background-color: #f5f5f5;
+}
+
+.day-header.today .day-num {
+  background-color: #1a73e8;
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.day-header.selected {
+  background-color: #e3f2fd;
+}
+
+.day-name {
+  font-size: 0.75rem;
+  color: #666;
+  text-transform: uppercase;
+}
+
+.day-num {
+  font-size: 1.1rem;
+  margin-top: 4px;
+}
+
+.week-body-scroll {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.all-day-row {
+  display: flex;
+  border-bottom: 1px solid #e0e0e0;
+  min-height: 40px;
+  background-color: white;
+  position: relative;
+  z-index: 2;
+}
+
+.time-col {
+  width: 60px;
+  flex-shrink: 0;
+  border-right: 1px solid #e0e0e0;
+  font-size: 0.75rem;
+  color: #666;
+  padding: 8px 8px 0 0;
+  text-align: right;
+}
+
+.day-col {
+  flex: 1;
+  border-right: 1px solid #e0e0e0;
+  padding: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.event-chip.all-day {
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.event-chip.clickable,
+.event-block.clickable {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.event-chip.clickable:hover,
+.event-block.clickable:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+}
+
+.time-grid-container {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 1200px;
+}
+
+.time-labels-col {
+  width: 60px;
+  border-right: 1px solid #e0e0e0;
+  position: relative;
+  background: white;
+  z-index: 1;
+}
+
+.time-label {
+  height: 50px;
+  text-align: right;
+  padding-right: 8px;
+  font-size: 0.75rem;
+  color: #666;
+  transform: translateY(-8px);
+}
+
+.day-cols-container {
+  flex: 1;
+  display: flex;
+  position: relative;
+}
+
+.grid-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px solid #f0f0f0;
+  height: 1px;
+  pointer-events: none;
+}
+
+.day-col-time {
+  flex: 1;
+  border-right: 1px solid #e0e0e0;
+  position: relative;
+  cursor: pointer;
+}
+
+.day-col-time:hover {
+  background-color: #fafafa;
+}
+
+.event-block {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  overflow: hidden;
+  border-left: 3px solid;
+  z-index: 2;
+}

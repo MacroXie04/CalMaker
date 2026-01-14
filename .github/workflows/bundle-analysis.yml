@@ -1,0 +1,66 @@
+name: Bundle Analysis
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  analyze:
+    name: Analyze Bundle Size
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build and analyze
+        run: npm run build
+        
+      - name: Calculate bundle size
+        id: bundle-size
+        run: |
+          # Get sizes of all JS files in dist/assets
+          JS_SIZE=$(find dist/assets -name "*.js" -exec du -cb {} + | tail -1 | cut -f1)
+          CSS_SIZE=$(find dist/assets -name "*.css" -exec du -cb {} + | tail -1 | cut -f1)
+          TOTAL_SIZE=$((JS_SIZE + CSS_SIZE))
+          
+          # Convert to KB
+          JS_KB=$(echo "scale=2; $JS_SIZE / 1024" | bc)
+          CSS_KB=$(echo "scale=2; $CSS_SIZE / 1024" | bc)
+          TOTAL_KB=$(echo "scale=2; $TOTAL_SIZE / 1024" | bc)
+          
+          echo "js_size=${JS_KB}" >> $GITHUB_OUTPUT
+          echo "css_size=${CSS_KB}" >> $GITHUB_OUTPUT
+          echo "total_size=${TOTAL_KB}" >> $GITHUB_OUTPUT
+          
+      - name: Bundle Size Summary
+        run: |
+          echo "## 📦 Bundle Size Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Type | Size |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| JavaScript | ${{ steps.bundle-size.outputs.js_size }} KB |" >> $GITHUB_STEP_SUMMARY
+          echo "| CSS | ${{ steps.bundle-size.outputs.css_size }} KB |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Total** | **${{ steps.bundle-size.outputs.total_size }} KB** |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Files" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          ls -lh dist/assets/ >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          
+      - name: Upload bundle report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-report
+          path: dist/
+          retention-days: 7

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import CalendarView from './components/CalendarView.vue';
-import EventForm from './components/EventForm.vue';
-import ToastContainer from './components/ToastContainer.vue';
+import CalendarView from './components/calendar/vue/CalendarView.vue';
+import EventForm from './components/events/vue/EventForm.vue';
+import ToastContainer from './components/ui/vue/ToastContainer.vue';
 import type { EventItem } from './types';
 
 const isFormOpen = ref(false);

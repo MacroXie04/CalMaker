@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { generateICS } from './ics';
-import type { EventItem } from '../types';
+import { generateICS } from '../ics';
+import type { EventItem } from '../../types';
 
 describe('ICS generation', () => {
   const createEvent = (overrides: Partial<EventItem> = {}): EventItem => ({
@@ -157,6 +157,33 @@ describe('ICS generation', () => {
       const ics = generateICS(events);
       
       expect(ics).toContain('BYDAY=MO,WE,FR');
+    });
+
+    it('adjusts DTSTART to first matching day when start date does not match BYDAY', () => {
+      // 2024-03-19 is a Tuesday, but event repeats on Mon (1) and Thu (4)
+      // First valid occurrence should be Thu 2024-03-21
+      const events = [createEvent({
+        date: '2024-03-19', // Tuesday
+        startTime: '09:00',
+        recurrence: { freq: 'WEEKLY', byWeekday: [1, 4] }, // Mon, Thu
+      })];
+      const ics = generateICS(events);
+      
+      // Should adjust to Thursday 2024-03-21
+      expect(ics).toContain('DTSTART;TZID=America/Los_Angeles:20240321T090000');
+    });
+
+    it('keeps DTSTART when start date matches one of BYDAY', () => {
+      // 2024-03-18 is a Monday, event repeats on Mon (1) and Thu (4)
+      const events = [createEvent({
+        date: '2024-03-18', // Monday
+        startTime: '09:00',
+        recurrence: { freq: 'WEEKLY', byWeekday: [1, 4] }, // Mon, Thu
+      })];
+      const ics = generateICS(events);
+      
+      // Should keep Monday 2024-03-18
+      expect(ics).toContain('DTSTART;TZID=America/Los_Angeles:20240318T090000');
     });
 
     it('generates UNTIL for recurrence end date', () => {

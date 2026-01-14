@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { parseUCMHtml } from './ucmParser';
+import { parseUCMHtml } from '../ucmParser';
 
 // Mock DOMParser for Node.js environment
 beforeAll(() => {

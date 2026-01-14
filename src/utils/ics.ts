@@ -27,6 +27,48 @@ function foldLine(line: string): string {
   return parts.join('\r\n');
 }
 
+// Find the first date that matches the recurrence pattern
+function findFirstRecurrenceDate(startDate: string, byWeekday: number[]): string {
+  if (!byWeekday || byWeekday.length === 0) {
+    return startDate;
+  }
+  
+  const [year, month, day] = startDate.split('-').map(Number);
+  if (!year || !month || !day) return startDate;
+  
+  const date = new Date(year, month - 1, day);
+  const startDayOfWeek = date.getDay(); // 0=Sunday, 1=Monday, etc.
+  
+  // Check if start date already matches one of the recurrence days
+  if (byWeekday.includes(startDayOfWeek)) {
+    return startDate;
+  }
+  
+  // Find the next matching day
+  // Sort byWeekday to make it easier to find next day
+  const sortedDays = [...byWeekday].sort((a, b) => a - b);
+  
+  // Find the next day in the same week or next week
+  let daysToAdd = 7; // Default to a week if no match found
+  for (const targetDay of sortedDays) {
+    let diff = targetDay - startDayOfWeek;
+    if (diff <= 0) {
+      diff += 7; // Move to next week
+    }
+    if (diff < daysToAdd) {
+      daysToAdd = diff;
+    }
+  }
+  
+  // Calculate the new date
+  const newDate = new Date(year, month - 1, day + daysToAdd);
+  const y = newDate.getFullYear();
+  const m = String(newDate.getMonth() + 1).padStart(2, '0');
+  const d = String(newDate.getDate()).padStart(2, '0');
+  
+  return `${y}-${m}-${d}`;
+}
+
 export function generateICS(events: EventItem[]): string {
   const lines: string[] = [
     'BEGIN:VCALENDAR',
@@ -59,11 +101,20 @@ export function generateICS(events: EventItem[]): string {
     
     const tzid = event.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
+    // Adjust start date for weekly recurrence with BYDAY
+    // The DTSTART must fall on one of the BYDAY days for correct behavior
+    let effectiveStartDate = event.date;
+    if (event.recurrence.freq === 'WEEKLY' && 
+        event.recurrence.byWeekday && 
+        event.recurrence.byWeekday.length > 0) {
+      effectiveStartDate = findFirstRecurrenceDate(event.date, event.recurrence.byWeekday);
+    }
+
     if (event.allDay) {
-      lines.push(`DTSTART${formatICSDate(event.date, undefined, true)}`);
+      lines.push(`DTSTART${formatICSDate(effectiveStartDate, undefined, true)}`);
       // End date for all day is next day
       // Parse date parts directly to avoid timezone issues with new Date()
-      const [year, month, day] = event.date.split('-').map(Number);
+      const [year, month, day] = effectiveStartDate.split('-').map(Number);
       if (year && month && day) {
         const nextDay = new Date(year, month - 1, day + 1);
         const y = nextDay.getFullYear();
@@ -72,10 +123,10 @@ export function generateICS(events: EventItem[]): string {
         lines.push(`DTEND${formatICSDate(`${y}-${m}-${d}`, undefined, true)}`);
       }
     } else {
-        lines.push(`DTSTART;TZID=${tzid}${formatICSDate(event.date, event.startTime)}`);
+        lines.push(`DTSTART;TZID=${tzid}${formatICSDate(effectiveStartDate, event.startTime)}`);
         
         // Simple Assumption: Single day event if timed
-        const endDate = event.date;
+        const endDate = effectiveStartDate;
         let endTime = event.endTime;
         if (!endTime) endTime = event.startTime; 
         

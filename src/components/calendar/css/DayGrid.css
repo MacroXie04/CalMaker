@@ -1,0 +1,140 @@
+.day-grid-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: white;
+}
+
+.day-header {
+  padding: 16px;
+  border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.day-title {
+  font-size: 1.2rem;
+  font-weight: 500;
+}
+
+.day-body-scroll {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.all-day-row {
+  display: flex;
+  border-bottom: 1px solid #e0e0e0;
+  min-height: 40px;
+  background-color: white;
+  position: relative;
+  z-index: 2;
+}
+
+.time-col {
+  width: 60px;
+  flex-shrink: 0;
+  border-right: 1px solid #e0e0e0;
+  font-size: 0.75rem;
+  color: #666;
+  padding: 8px 8px 0 0;
+  text-align: right;
+}
+
+.day-col {
+  flex: 1;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.event-chip.all-day {
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.event-chip.clickable,
+.event-block.clickable {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.event-chip.clickable:hover,
+.event-block.clickable:hover {
+  transform: translateY(-1px) scale(1.01);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+}
+
+.time-grid-container {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 1440px;
+}
+
+.time-labels-col {
+  width: 60px;
+  border-right: 1px solid #e0e0e0;
+  position: relative;
+  background: white;
+  z-index: 1;
+}
+
+.time-label {
+  height: 60px;
+  text-align: right;
+  padding-right: 8px;
+  font-size: 0.75rem;
+  color: #666;
+  transform: translateY(-8px);
+}
+
+.day-content-col {
+  flex: 1;
+  position: relative;
+}
+
+.grid-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px solid #f0f0f0;
+  height: 1px;
+  pointer-events: none;
+}
+
+.event-block {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  overflow: hidden;
+  border-left: 4px solid;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+}
+
+.event-time-text {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.event-title-text {
+  font-weight: 500;
+}
+
+.event-loc-text {
+  font-size: 0.75rem;
+  opacity: 0.8;
+  margin-top: 2px;
+}

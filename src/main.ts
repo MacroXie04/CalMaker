@@ -1,5 +1,5 @@
 import { createApp } from 'vue'
-import './style.css'
+import './assets/styles/global.css'
 import App from './App.vue'
 
 import '@material/web/button/filled-button.js';
