@@ -11,4 +11,24 @@ export default defineConfig({
       }
     }
   })],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          // Split vendor chunks by package
+          if (id.includes('node_modules')) {
+            if (id.includes('@material')) {
+              return 'vendor-material';
+            }
+            if (id.includes('jszip') || id.includes('pako')) {
+              return 'vendor-jszip';
+            }
+            if (id.includes('vue') || id.includes('@vue')) {
+              return 'vendor-vue';
+            }
+          }
+        },
+      },
+    },
+  },
 })

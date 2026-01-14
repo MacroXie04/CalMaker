@@ -1,0 +1,101 @@
+<script setup lang="ts">
+import { useToast } from '../composables/useToast';
+
+const { toasts } = useToast();
+</script>
+
+<template>
+  <div class="toast-container">
+    <TransitionGroup name="toast">
+      <div 
+        v-for="toast in toasts" 
+        :key="toast.id" 
+        class="toast"
+        :class="toast.type"
+      >
+        <md-icon v-if="toast.type === 'success'">check_circle</md-icon>
+        <md-icon v-else-if="toast.type === 'error'">error</md-icon>
+        <md-icon v-else>info</md-icon>
+        <span>{{ toast.message }}</span>
+      </div>
+    </TransitionGroup>
+  </div>
+</template>
+
+<style scoped>
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-radius: 8px;
+  color: white;
+  font-size: 0.95rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  pointer-events: auto;
+  min-width: 280px;
+  max-width: 400px;
+}
+
+.toast.success {
+  background-color: #2e7d32;
+}
+
+.toast.error {
+  background-color: #c62828;
+}
+
+.toast.info {
+  background-color: #1565c0;
+}
+
+.toast md-icon {
+  --md-icon-size: 20px;
+  color: white;
+}
+
+/* Transitions */
+.toast-enter-active {
+  transition: all 0.3s ease-out;
+}
+
+.toast-leave-active {
+  transition: all 0.2s ease-in;
+}
+
+.toast-enter-from {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.toast-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+@media (max-width: 600px) {
+  .toast-container {
+    left: 16px;
+    right: 16px;
+    transform: none;
+    bottom: 80px;
+  }
+  
+  .toast {
+    min-width: auto;
+    max-width: none;
+  }
+}
+</style>

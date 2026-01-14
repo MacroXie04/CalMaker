@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue';
 import type { EventItem, RecurrenceRule } from '../types';
 import { useEvents } from '../composables/useEvents';
+import { useToast } from '../composables/useToast';
 import { getToday } from '../utils/date';
 import { parseUCMHtml } from '../utils/ucmParser';
 
@@ -14,6 +15,7 @@ const props = defineProps<{
 const emit = defineEmits(['close', 'saved']);
 
 const { addEvent, updateEvent } = useEvents();
+const toast = useToast();
 
 // Form State
 const title = ref('');
@@ -38,14 +40,14 @@ function handleImport() {
   const newEvents = parseUCMHtml(importHtml.value);
   if (newEvents.length > 0) {
     newEvents.forEach(evt => addEvent(evt));
-    alert(`Imported ${newEvents.length} events!`);
+    toast.success(`Imported ${newEvents.length} events!`);
     emit('saved');
     emit('close');
     // Reset
     importHtml.value = '';
     showImport.value = false;
   } else {
-    alert('No events found in HTML.');
+    toast.error('No events found in HTML.');
   }
 }
 
@@ -54,7 +56,7 @@ function handleImport() {
 const freq = ref<RecurrenceRule['freq']>('NONE');
 const interval = ref(1);
 const byWeekday = ref<number[]>([]); 
-const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const days = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
 const endCondition = ref<'NEVER' | 'UNTIL' | 'COUNT'>('NEVER');
 const untilDate = ref('');
@@ -114,7 +116,7 @@ function resetForm() {
 
 function save() {
   if (!title.value || !date.value) {
-    alert('Title and Date are required');
+    toast.error('Title and Date are required');
     return; 
   }
   

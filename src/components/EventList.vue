@@ -86,8 +86,12 @@ function getRecurrenceInfo(evt: ExpandedEvent): string {
   let info = '';
   
   if (evt.recurrence.byWeekday && evt.recurrence.byWeekday.length > 0) {
-    const dayNames = evt.recurrence.byWeekday.map(d => days[d]).join(', ');
-    info = `Every ${dayNames}`;
+    const dayNames = evt.recurrence.byWeekday
+      .filter(d => d >= 0 && d <= 6)
+      .map(d => days[d])
+      .filter((name): name is string => !!name)
+      .join(', ');
+    info = dayNames ? `Every ${dayNames}` : evt.recurrence.freq.toLowerCase();
   } else {
     info = `${evt.recurrence.freq.toLowerCase()}`;
   }

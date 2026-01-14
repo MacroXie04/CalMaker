@@ -62,13 +62,18 @@ export function parseUCMHtml(html: string): EventItem[] {
         if (!startDateStr || !endDateStr) return;
         
         // Date format MM/DD/YYYY
-        const parseUSDate = (str: string) => {
-            const [m, d, y] = str.split('/').map(Number);
+        const parseUSDate = (str: string): string | null => {
+            const parts = str.split('/').map(Number);
+            if (parts.length !== 3) return null;
+            const [m, d, y] = parts;
+            if (!m || !d || !y || isNaN(m) || isNaN(d) || isNaN(y)) return null;
+            if (m < 1 || m > 12 || d < 1 || d > 31 || y < 1900 || y > 2100) return null;
             return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
         };
         
         const startDate = parseUSDate(startDateStr);
         const endDate = parseUSDate(endDateStr);
+        if (!startDate || !endDate) return;
         
         // Time
         // Format: "12:00 PM - 01:15 PM"

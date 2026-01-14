@@ -62,11 +62,15 @@ export function generateICS(events: EventItem[]): string {
     if (event.allDay) {
       lines.push(`DTSTART${formatICSDate(event.date, undefined, true)}`);
       // End date for all day is next day
-      const nextDay = new Date(new Date(event.date).getTime() + 86400000);
-      const y = nextDay.getFullYear();
-      const m = String(nextDay.getMonth()+1).padStart(2,'0');
-      const d = String(nextDay.getDate()).padStart(2,'0');
-      lines.push(`DTEND${formatICSDate(`${y}-${m}-${d}`, undefined, true)}`);
+      // Parse date parts directly to avoid timezone issues with new Date()
+      const [year, month, day] = event.date.split('-').map(Number);
+      if (year && month && day) {
+        const nextDay = new Date(year, month - 1, day + 1);
+        const y = nextDay.getFullYear();
+        const m = String(nextDay.getMonth()+1).padStart(2,'0');
+        const d = String(nextDay.getDate()).padStart(2,'0');
+        lines.push(`DTEND${formatICSDate(`${y}-${m}-${d}`, undefined, true)}`);
+      }
     } else {
         lines.push(`DTSTART;TZID=${tzid}${formatICSDate(event.date, event.startTime)}`);
         
@@ -86,8 +90,12 @@ export function generateICS(events: EventItem[]): string {
       }
       if (event.recurrence.freq === 'WEEKLY' && event.recurrence.byWeekday && event.recurrence.byWeekday.length > 0) {
         const days = ['SU','MO','TU','WE','TH','FR','SA'];
-        const byDay = event.recurrence.byWeekday.map(d => days[d]).join(',');
-        parts.push(`BYDAY=${byDay}`);
+        const byDay = event.recurrence.byWeekday
+          .filter(d => d >= 0 && d <= 6)
+          .map(d => days[d])
+          .filter((name): name is string => !!name)
+          .join(',');
+        if (byDay) parts.push(`BYDAY=${byDay}`);
       }
       if (event.recurrence.until) {
         // UNTIL must be UTC: YYYYMMDDT235959Z
